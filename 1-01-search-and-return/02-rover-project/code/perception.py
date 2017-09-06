@@ -133,7 +133,7 @@ def perception_step(Rover):
     navigable = color_thresh(warped)
 
     # Obstacles are simply navigable inverted
-    mask = np.ones_like(navigable)
+    mask = perspect_transform(np.ones_like(Rover.img[:,:,0]), source, destination)
     obstacle = invert_thresh(navigable, mask)
 
     # identify the rock
