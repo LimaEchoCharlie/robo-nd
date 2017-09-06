@@ -38,7 +38,7 @@ def find_rocks(img):
     hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
 
     # Threshold the HSV image to get only yellow colors
-    return cv2.inRange(hsv, lower_hsv, upper_hsv)
+    return cv2.inRange(hsv, lower_hsv, upper_hsv)/255
 
 
 # Define a function to convert from image coords to rover coords
@@ -96,8 +96,8 @@ def pix_to_world(xpix, ypix, xpos, ypos, yaw, world_size, scale):
 # wrapper around pix_to_world to simplify call
 def rover_to_world(x_rover, y_rover, Rover, scale):
     return pix_to_world(x_rover, y_rover,
-                        Rover.xpos[Rover.count], Rover.ypos[Rover.count],
-                        Rover.yaw[Rover.count], Rover.worldmap.shape[0],
+                        Rover.pos[0], Rover.pos[1],
+                        Rover.yaw, Rover.worldmap.shape[0],
                         scale)
 
 # Define a function to perform a perspective transform
@@ -140,9 +140,9 @@ def perception_step(Rover):
     rock_sample = find_rocks(warped)
 
     # 4) Update Rover.vision_image (this will be displayed on left side of screen)
-    Rover.vision_image[:,:,0] = obstacle        # color-thresholded binary image
-    Rover.vision_image[:,:,1] = rock_sample     # color-thresholded binary image
-    Rover.vision_image[:,:,2] = navigable       # terrain color-thresholded binary image
+    Rover.vision_image[:,:,0] = obstacle*255        # color-thresholded binary image
+    Rover.vision_image[:,:,1] = rock_sample*255     # color-thresholded binary image
+    Rover.vision_image[:,:,2] = navigable*255       # terrain color-thresholded binary image
 
     # 5) Convert map image pixel values to rover-centric coords
     xpix_navigable, ypix_navigable = rover_coords(navigable)
