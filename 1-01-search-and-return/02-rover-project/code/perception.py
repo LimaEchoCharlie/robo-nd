@@ -1,5 +1,9 @@
 import numpy as np
 import cv2
+from debug import current_frame_fidelity
+
+
+frame_fidelity = current_frame_fidelity()
 
 # Identify pixels above the threshold
 # Threshold of RGB > 160 does a nice job of identifying ground pixels only
@@ -108,11 +112,20 @@ def perspect_transform(img, src, dst):
     
     return warped
 
+def debug_current_frame_fidelity(Rover, navigable_world):
+    good_nav_pix = np.count_nonzero((Rover.ground_truth[navigable_y_world, navigable_x_world, 1] > 0))
+    tot_nav_pix = len(navigable_world[0])
+    fidelity = 0 if tot_nav_pix == 0 else round(100*good_nav_pix/(tot_nav_pix), 1)
+    with open('frame_fidelity_stats.csv', 'a', newline='') as csvfile:
+        csv.writer(csvfile).writerow([good_nav_pix,tot_nav_pix, fidelity, Rover.roll, Rover.yaw])
+
 
 # Apply the above functions in succession and update the Rover state accordingly
 def perception_step(Rover):
     # Perform perception steps to update Rover()
     # NOTE: camera image is coming to you in Rover.img
+    debug = True
+
     # 1) Define source and destination points for perspective transform
     dst_size = 5
     # Set a bottom offset to account for the fact that the bottom of the image
@@ -159,6 +172,8 @@ def perception_step(Rover):
     Rover.worldmap[obstacle_y_world, obstacle_x_world, 0] += 1
     Rover.worldmap[rock_y_world, rock_x_world, 1] += 1
     Rover.worldmap[navigable_y_world, navigable_x_world, 2] += 1
+
+    frame_fidelity.save_frame(Rover,(navigable_x_world, navigable_y_world))
 
     # 8) Convert rover-centric pixel positions to polar coordinates
     # Update Rover pixel distances and angles
