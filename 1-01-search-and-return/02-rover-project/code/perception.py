@@ -112,19 +112,22 @@ def perspect_transform(img, src, dst):
     
     return warped
 
-def debug_current_frame_fidelity(Rover, navigable_world):
-    good_nav_pix = np.count_nonzero((Rover.ground_truth[navigable_y_world, navigable_x_world, 1] > 0))
-    tot_nav_pix = len(navigable_world[0])
-    fidelity = 0 if tot_nav_pix == 0 else round(100*good_nav_pix/(tot_nav_pix), 1)
-    with open('frame_fidelity_stats.csv', 'a', newline='') as csvfile:
-        csv.writer(csvfile).writerow([good_nav_pix,tot_nav_pix, fidelity, Rover.roll, Rover.yaw])
+# move angle to (-180,180]
+def unwrap_angle(angle):
+    if angle > 180:
+        angle -= 360
+    return angle
 
+# only trust the perspective transformation when the pitch and roll are near zero
+def orientation_heuristic(Rover):
+    abs_roll = abs(unwrap_angle(Rover.roll))
+    abs_pitch = abs(unwrap_angle(Rover.pitch))
+    return (abs_pitch < 1.0) & (abs_roll < 1.0)
 
 # Apply the above functions in succession and update the Rover state accordingly
 def perception_step(Rover):
     # Perform perception steps to update Rover()
     # NOTE: camera image is coming to you in Rover.img
-    debug = True
 
     # 1) Define source and destination points for perspective transform
     dst_size = 5
@@ -169,9 +172,11 @@ def perception_step(Rover):
     rock_x_world, rock_y_world = rover_to_world(xpix_rocks, ypix_rocks, Rover, scale)
 
     # 7) Update Rover worldmap (to be displayed on right side of screen)
-    Rover.worldmap[obstacle_y_world, obstacle_x_world, 0] += 1
-    Rover.worldmap[rock_y_world, rock_x_world, 1] += 1
-    Rover.worldmap[navigable_y_world, navigable_x_world, 2] += 1
+    if orientation_heuristic(Rover):
+        Rover.worldmap[obstacle_y_world, obstacle_x_world, 0] = 255
+        Rover.worldmap[navigable_y_world, navigable_x_world, 2] = 255
+
+    Rover.worldmap[rock_y_world, rock_x_world, 1] = 255
 
     frame_fidelity.save_frame(Rover,(navigable_x_world, navigable_y_world))
 
