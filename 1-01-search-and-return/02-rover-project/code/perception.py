@@ -124,6 +124,18 @@ def orientation_heuristic(Rover):
     abs_pitch = abs(unwrap_angle(Rover.pitch))
     return (abs_pitch < 1.0) & (abs_roll < 1.0)
 
+# create an array that will mask out the portions of the image that furthest from the eye
+# the eye is at (max_x/2, max_y)
+# mask is applied independently in the x and y direction
+def near_eye_mask(shape, x_factor=0.2, y_factor=0.2):
+    y_limit = int(shape[0]*y_factor)
+    x_limit = int(shape[1]*x_factor/2)
+    mask = np.ones(shape)
+    mask[0:y_limit,:] = 0
+    mask[:,0:x_limit] = 0
+    mask[:,(shape[1]-x_limit):shape[1]] = 0
+    return mask
+
 # Apply the above functions in succession and update the Rover state accordingly
 def perception_step(Rover):
     # Perform perception steps to update Rover()
