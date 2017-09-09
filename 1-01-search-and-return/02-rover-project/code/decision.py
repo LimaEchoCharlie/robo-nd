@@ -1,5 +1,12 @@
 import numpy as np
+import time
+import random
 
+def change_mode(Rover, new_mode):
+    Rover.mode = new_mode
+    Rover.forward_tick = 0
+    Rover.escape_tick = 0
+    return Rover
 
 # This is where you can build a decision tree for determining throttle, brake and steer 
 # commands based on the output of the perception_step() function
@@ -13,9 +20,14 @@ def decision_step(Rover):
     # Check if we have vision data to make decisions with
     if Rover.nav_angles is not None:
         # Check for Rover.mode status
-        if Rover.mode == 'forward': 
+        if Rover.mode == 'forward':
+            Rover.forward_tick += 1
+
+            # assume that the Rover should be travelling at a good speed by now unless it is trapped
+            if Rover.forward_tick > 200 and Rover.vel < (0.05 * Rover.max_vel):
+                Rover = change_mode(Rover, 'escape')
             # Check the extent of navigable terrain
-            if len(Rover.nav_angles) >= Rover.stop_forward:  
+            elif len(Rover.nav_angles) >= Rover.stop_forward:
                 # If mode is forward, navigable terrain looks good 
                 # and velocity is below max, then throttle 
                 if Rover.vel < Rover.max_vel:
@@ -28,12 +40,12 @@ def decision_step(Rover):
                 Rover.steer = np.clip(np.mean(Rover.nav_angles * 180/np.pi), -15, 15)
             # If there's a lack of navigable terrain pixels then go to 'stop' mode
             elif len(Rover.nav_angles) < Rover.stop_forward:
-                    # Set mode to "stop" and hit the brakes!
-                    Rover.throttle = 0
-                    # Set brake to stored brake value
-                    Rover.brake = Rover.brake_set
-                    Rover.steer = 0
-                    Rover.mode = 'stop'
+                # Set mode to "stop" and hit the brakes!
+                Rover.throttle = 0
+                # Set brake to stored brake value
+                Rover.brake = Rover.brake_set
+                Rover.steer = 0
+                Rover = change_mode(Rover, 'stop')
 
         # If we're already in "stop" mode then make different decisions
         elif Rover.mode == 'stop':
@@ -59,14 +71,42 @@ def decision_step(Rover):
                     Rover.brake = 0
                     # Set steer to mean angle
                     Rover.steer = np.clip(np.mean(Rover.nav_angles * 180/np.pi), -15, 15)
-                    Rover.mode = 'forward'
+                    Rover = change_mode(Rover, 'forward')
+
+        elif Rover.mode == 'escape':
+            Rover.escape_tick += 1
+            # Rover is trapped, try to escape
+            nav_close = Rover.nav_dists < 10
+            print(np.count_nonzero(nav_close))
+            if Rover.escape_tick > 50 and np.count_nonzero(nav_close) > 30:
+                if Rover.vel < 0.05:
+                    Rover.throttle = 0
+                    Rover.steer = 0
+                    Rover.brake = Rover.brake_set
+                else:
+                    Rover.throttle = 0
+                    Rover.steer = 0
+                    Rover.brake = 0
+                    Rover = change_mode(Rover, 'forward')
+            else:
+                Rover.brake = 0
+                if Rover.escape_tick % 100 < 75 and len(nav_close)>0:
+                    Rover.steer = np.clip(np.mean(Rover.nav_angles[nav_close] * -180 / np.pi), -15, 15)
+                    Rover.throttle = -Rover.throttle_set
+                else:
+                    Rover.steer = -15
+                    Rover.throttle = 0
+
+
+
+
     # Just to make the rover do something 
     # even if no modifications have been made to the code
     else:
         Rover.throttle = Rover.throttle_set
         Rover.steer = 0
         Rover.brake = 0
-        
+
     # If in a state where want to pickup a rock send pickup command
     if Rover.near_sample and Rover.vel == 0 and not Rover.picking_up:
         Rover.send_pickup = True
