@@ -55,6 +55,7 @@ class RoverState():
         self.mode = 'forward' # Current mode (can be forward or stop)
         self.throttle_set = 0.2 # Throttle setting when accelerating
         self.brake_set = 10 # Brake setting when braking
+        self.brake_tap = 0.2 # Brake setting when tapping the brake (just reduce the speed slightly when turning)
         # The stop_forward and go_forward fields below represent total count
         # of navigable terrain pixels.  This is a very crude form of knowing
         # when you can keep going and when you should stop.  Feel free to
@@ -77,8 +78,8 @@ class RoverState():
         self.near_sample = 0 # Will be set to telemetry value data["near_sample"]
         self.picking_up = 0 # Will be set to telemetry value data["picking_up"]
         self.send_pickup = False # Set to True to trigger rock pickup
-        self.forward_tick = 0
-        self.escape_tick = 0
+        self.forward_tick = 0 # How many frames that the Rover has been in forward mode
+        self.escape_tick = 0 # How many frames that the Rover has been in escape mode
 
 # Initialize our rover
 Rover = RoverState()
@@ -102,7 +103,7 @@ def telemetry(sid, data):
         fps = frame_counter
         frame_counter = 0
         second_counter = time.time()
-    #print("Current FPS: {}".format(fps))
+    print("Current FPS: {}".format(fps))
 
     if data:
         global Rover

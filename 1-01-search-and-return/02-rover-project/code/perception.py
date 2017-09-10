@@ -119,7 +119,7 @@ def unwrap_angle(angle):
     return angle
 
 # only trust the perspective transformation when the pitch and roll are near zero
-def orientation_heuristic(Rover):
+def perspective_is_reliable(Rover):
     abs_roll = abs(unwrap_angle(Rover.roll))
     abs_pitch = abs(unwrap_angle(Rover.pitch))
     return (abs_pitch < 1.0) & (abs_roll < 1.0)
@@ -189,7 +189,7 @@ def perception_step(Rover):
     rock_x_world, rock_y_world = rover_to_world(xpix_rocks, ypix_rocks, Rover, scale)
 
     # 7) Update Rover worldmap (to be displayed on right side of screen)
-    if orientation_heuristic(Rover):
+    if perspective_is_reliable(Rover):
         Rover.worldmap[obstacle_y_world, obstacle_x_world, 0] = 255
         Rover.worldmap[near_navigable_y_world, near_navigable_x_world, 2] = 255
 

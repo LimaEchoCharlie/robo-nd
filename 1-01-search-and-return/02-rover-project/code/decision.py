@@ -1,6 +1,5 @@
 import numpy as np
 import time
-import random
 
 def change_mode(Rover, new_mode):
     Rover.mode = new_mode
@@ -28,16 +27,21 @@ def decision_step(Rover):
                 Rover = change_mode(Rover, 'escape')
             # Check the extent of navigable terrain
             elif len(Rover.nav_angles) >= Rover.stop_forward:
-                # If mode is forward, navigable terrain looks good 
-                # and velocity is below max, then throttle 
-                if Rover.vel < Rover.max_vel:
-                    # Set throttle value to throttle setting
-                    Rover.throttle = Rover.throttle_set
-                else: # Else coast
-                    Rover.throttle = 0
-                Rover.brake = 0
                 # Set steering to average angle clipped to the range +/- 15
                 Rover.steer = np.clip(np.mean(Rover.nav_angles * 180/np.pi), -15, 15)
+                # If mode is forward, navigable terrain looks good
+                # and velocity is below max, then throttle
+                if abs(Rover.steer) > 14.9 and Rover.vel > (0.75 *Rover.max_vel):
+                    Rover.throttle = 0
+                    Rover.brake = Rover.brake_tap
+                elif Rover.vel < Rover.max_vel:
+                    # Set throttle value to throttle setting
+                    Rover.throttle = Rover.throttle_set
+                    Rover.brake = 0
+                else: # Else coast
+                    Rover.throttle = 0
+                    Rover.brake = 0
+
             # If there's a lack of navigable terrain pixels then go to 'stop' mode
             elif len(Rover.nav_angles) < Rover.stop_forward:
                 # Set mode to "stop" and hit the brakes!
@@ -73,13 +77,13 @@ def decision_step(Rover):
                     Rover.steer = np.clip(np.mean(Rover.nav_angles * 180/np.pi), -15, 15)
                     Rover = change_mode(Rover, 'forward')
 
+        # Rover is trapped, try to escape
         elif Rover.mode == 'escape':
             Rover.escape_tick += 1
-            # Rover is trapped, try to escape
-            nav_close = Rover.nav_dists < 10
-            print(np.count_nonzero(nav_close))
-            if Rover.escape_tick > 50 and np.count_nonzero(nav_close) > 30:
-                if Rover.vel < 0.05:
+            nav_close_angles = Rover.nav_angles[Rover.nav_dists < 10]
+            print(len(nav_close_angles))
+            if Rover.escape_tick > 50 and len(nav_close_angles) > 25:
+                if Rover.vel < -0.05:
                     Rover.throttle = 0
                     Rover.steer = 0
                     Rover.brake = Rover.brake_set
@@ -90,15 +94,12 @@ def decision_step(Rover):
                     Rover = change_mode(Rover, 'forward')
             else:
                 Rover.brake = 0
-                if Rover.escape_tick % 100 < 75 and len(nav_close)>0:
-                    Rover.steer = np.clip(np.mean(Rover.nav_angles[nav_close] * -180 / np.pi), -15, 15)
+                if Rover.escape_tick % 100 < 75 and len(nav_close_angles)>0:
+                    Rover.steer = -15 if np.mean(nav_close_angles * 180 / np.pi)>0 else 15
                     Rover.throttle = -Rover.throttle_set
                 else:
                     Rover.steer = -15
                     Rover.throttle = 0
-
-
-
 
     # Just to make the rover do something 
     # even if no modifications have been made to the code
